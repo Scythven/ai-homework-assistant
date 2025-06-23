@@ -3,7 +3,7 @@ const input = document.getElementById('user-input');
 const messages = document.getElementById('messages');
 const micBtn = document.getElementById('mic-btn');
 const voiceCheckbox = document.getElementById('voiceCheckbox');
-
+const themeToggle = document.getElementById('themeToggle');
 
 // --- Rozpoznawanie mowy ---
 window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -18,7 +18,7 @@ if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
 
   micBtn.addEventListener('click', () => {
     recognition.start();
-    micBtn.textContent = '🎤'; // Feedback – nagrywa
+    micBtn.textContent = '🎤';
   });
 
   recognition.addEventListener('result', (e) => {
@@ -35,7 +35,7 @@ if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
 }
 
 // --- Obsługa formularza ---
-form.addEventListener('submit', (e) => {
+form.addEventListener('submit', async (e) => {
   e.preventDefault();
 
   const userText = input.value.trim();
@@ -44,11 +44,9 @@ form.addEventListener('submit', (e) => {
   addMessage('user', userText);
   input.value = '';
 
-  setTimeout(() => {
-    const botResponse = getFakeResponse(userText);
-    addMessage('bot', botResponse);
-    speak(botResponse);
-  }, 700);
+  const botResponse = await fetchAIResponse(userText);
+  addMessage('bot', botResponse);
+  speak(botResponse);
 });
 
 function addMessage(sender, text) {
@@ -60,7 +58,7 @@ function addMessage(sender, text) {
 }
 
 function speak(text) {
-    if (!voiceCheckbox.checked) return;
+  if (!voiceCheckbox.checked) return;
   if ('speechSynthesis' in window) {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'pl-PL';
@@ -72,26 +70,26 @@ function speak(text) {
   }
 }
 
-function getFakeResponse(text) {
-  const responses = [
-    "Ciekawe pytanie!",
-    "Hmmm... muszę się zastanowić.",
-    "To zależy!",
-    "Możesz to powtórzyć inaczej?",
-    "Zapisuję to w pamięci!",
-    "Jasne, zaraz to sprawdzę."
-  ];
-  return responses[Math.floor(Math.random() * responses.length)];
-}
-const themeToggle = document.getElementById('themeToggle');
+async function fetchAIResponse(userMessage) {
+  try {
+    const response = await fetch('http://localhost:3000/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ message: userMessage })
+    });
 
+    const data = await response.json();
+    return data.response;
+  } catch (error) {
+    console.error("Błąd podczas komunikacji z serwerem:", error);
+    return "Przepraszam, nie mogę teraz odpowiedzieć 😢";
+  }
+}
+
+// --- Tryb nocny ---
 themeToggle.addEventListener('click', () => {
   document.body.classList.toggle('dark');
-  
-  // Zmień też ikonę/tekst przycisku
-  if (document.body.classList.contains('dark')) {
-    themeToggle.textContent = '☀️ Tryb dzienny';
-  } else {
-    themeToggle.textContent = '🌙 Tryb nocny';
-  }
+  themeToggle.textContent = document.body.classList.contains('dark') ? '☀️ Tryb dzienny' : '🌙 Tryb nocny';
 });
